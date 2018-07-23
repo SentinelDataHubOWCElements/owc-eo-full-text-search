@@ -1,0 +1,36 @@
+<link rel="import" href="../polymer/polymer-element.html">
+
+<dom-module id="owc-eo-full-text-search">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+    </style>
+    <h2>Hello [[prop1]]!</h2>
+  </template>
+
+  <script>
+    /**
+     * `owc-eo-full-text-search`
+     * Full Text Search component
+     *
+     * @customElement
+     * @polymer
+     * @demo demo/index.html
+     */
+    class OwcEoFullTextSearch extends Polymer.Element {
+      static get is() { return 'owc-eo-full-text-search'; }
+      static get properties() {
+        return {
+          prop1: {
+            type: String,
+            value: 'owc-eo-full-text-search'
+          }
+        };
+      }
+    }
+
+    window.customElements.define(OwcEoFullTextSearch.is, OwcEoFullTextSearch);
+  </script>
+</dom-module>
