@@ -1,13 +1,42 @@
 <link rel="import" href="../polymer/polymer-element.html">
+<link rel="import" href="../paper-input/paper-input.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+
 
 <dom-module id="owc-eo-full-text-search">
   <template>
-    <style>
+    <style is="custom-style">
       :host {
         display: block;
       }
+
+      #searchboxinput {
+        display: block;
+        min-height: 40px;
+        width: 98%;
+        margin-bottom: 5px;
+        align-self: center;
+        font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        font-size: 14px;
+        resize: vertical;
+        overflow-y: auto;
+      }
+      
+      paper-icon-button {
+        color: #002664;     
+        font-weight: bold;
+      }
+
+      paper-icon-button[toggles][active][raised].colorful {
+        color: rgba(66, 133, 244, 0.75);
+      }
     </style>
-    <h2>Hello [[prop1]]!</h2>
+    <div id="search-container"></div>
+    <paper-input label="Insert search criteria..." id="searchboxinput">
+        <paper-icon-button style="width: 33px;" slot="suffix" on-click="clear" icon="clear" alt="clear" title="clear"></paper-icon-button>
+        <paper-icon-button style="width: 33px;" slot="suffix" on-click="search" icon="search" alt="search" title="search"></paper-icon-button> 
+      </paper-input>
+    </div>
   </template>
 
   <script>
@@ -28,6 +57,20 @@
             value: 'owc-eo-full-text-search'
           }
         };
+      }
+
+      search() {
+        if (this._ctx.am.logged == false) {
+          this._ctx.wm.pushComponent(document.createElement('owc-ui-login-box'), "150px", "Login Title")
+          console.log('user not logged, pushing login component...');
+        } else {
+          var query = this.$.searchboxinput.value;
+          console.log('user logged, query: ', query);
+        }
+      }
+
+      clear() {
+        this.$.searchboxinput.value = "";
       }
     }
 
