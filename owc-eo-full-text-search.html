@@ -1,7 +1,7 @@
 <link rel="import" href="../polymer/polymer-element.html">
 <link rel="import" href="../paper-input/paper-input.html">
 <link rel="import" href="../iron-icons/iron-icons.html">
-
+<link rel="import" href="../owc-ui-list/owc-ui-list.html">
 
 <dom-module id="owc-eo-full-text-search">
   <template>
@@ -21,9 +21,9 @@
         resize: vertical;
         overflow-y: auto;
       }
-      
+
       paper-icon-button {
-        color: #002664;     
+        color: #002664;
         font-weight: bold;
       }
 
@@ -33,9 +33,9 @@
     </style>
     <div id="search-container"></div>
     <paper-input label="Insert search criteria..." id="searchboxinput">
-        <paper-icon-button style="width: 33px;" slot="suffix" on-click="clear" icon="clear" alt="clear" title="clear"></paper-icon-button>
-        <paper-icon-button style="width: 33px;" slot="suffix" on-click="search" icon="search" alt="search" title="search"></paper-icon-button> 
-      </paper-input>
+      <paper-icon-button style="width: 33px;" slot="suffix" on-click="clear" icon="clear" alt="clear" title="clear"></paper-icon-button>
+      <paper-icon-button style="width: 33px;" slot="suffix" on-click="search" icon="search" alt="search" title="search"></paper-icon-button>
+    </paper-input>
     </div>
   </template>
 
@@ -55,18 +55,53 @@
           prop1: {
             type: String,
             value: 'owc-eo-full-text-search'
+          },
+
+          res: {
+            type: String,
+            value: 'resDefaultValue'
           }
         };
       }
 
       search() {
+        var self = this;
         if (this._ctx.am.logged == false) {
-          this._ctx.wm.pushComponent(document.createElement('owc-ui-login-box'), "150px", "Login Title")
-          console.log('user not logged, pushing login component...');
-        } else {
+          this._ctx.wm.pushComponent(document.createElement('owc-ui-login-box'), "150px", "Login Title");
+        } else {//User Logged
           var query = this.$.searchboxinput.value;
-          console.log('user logged, query: ', query);
+          var method = "GET";
+          var subUrl = 'https://scihub.copernicus.eu/dhus/api/stub/products?filter=' + query + '&offset=0&limit=25&sortedby=ingestiondate&order=desc';
+          var a = this._ctx.hm.sendRequest(method, subUrl).then(
+            function (result) { //OK
+              console.log('OK');
+              console.log(result.data);
+              var b = JSON.stringify(result.data);
+              console.log(b);
+
+              /*
+               create list
+              inject model (list.model = model)
+              push list	
+              */
+
+              var list = document.createElement('owc-ui-list');
+              list.model = result.data;
+              self._ctx.wm.pushComponent(list, "150px", "List Title");
+
+              return result;
+            },
+            function (err) { //ERROR
+              console.log('ERROR');
+              return err;
+            });
+          this._ctx.am.testListModel = a;
         }
+      }
+
+      pushListComponent(){
+        console.log('pushListComponent');
+        
       }
 
       clear() {
