@@ -56,12 +56,27 @@
             type: String,
             value: 'owc-eo-full-text-search'
           },
-
           res: {
             type: String,
             value: 'resDefaultValue'
+          },
+          baseUrl: {
+            type: String,
+            value: 'default baseurl'
+          },
+
+          apiUrl: {
+            type: String,
+            value: 'default apiUrl'
           }
         };
+      }
+
+      ready() {
+        super.ready();
+        var self = this;
+        self.baseUrl = 'https://scihub.copernicus.eu';
+        self.apiUrl = '/dhus/api/stub/products?filter=';
       }
 
       search() {
@@ -71,37 +86,23 @@
         } else {//User Logged
           var query = this.$.searchboxinput.value;
           var method = "GET";
-          var subUrl = 'https://scihub.copernicus.eu/dhus/api/stub/products?filter=' + query + '&offset=0&limit=25&sortedby=ingestiondate&order=desc';
-          var a = this._ctx.hm.sendRequest(method, subUrl).then(
+          var subUrl = self.baseUrl + self.apiUrl + query + '&offset=0&limit=25&sortedby=ingestiondate&order=desc';
+          this._ctx.hm.sendRequest(method, subUrl).then(
             function (result) { //OK
-              console.log('OK');
-              console.log(result.data);
-              var b = JSON.stringify(result.data);
-              console.log(b);
-
-              /*
-               create list
-              inject model (list.model = model)
-              push list	
-              */
+              // console.log(result.data);
+              var jsonString = JSON.stringify(result.data);
+              // console.log(jsonString);
 
               var list = document.createElement('owc-ui-list');
-              list.model = result.data;
+              list.model = result.data; //jsonString //inject model
               self._ctx.wm.pushComponent(list, "150px", "List Title");
-
               return result;
             },
             function (err) { //ERROR
               console.log('ERROR');
               return err;
             });
-          this._ctx.am.testListModel = a;
         }
-      }
-
-      pushListComponent(){
-        console.log('pushListComponent');
-        
       }
 
       clear() {
