@@ -38,75 +38,76 @@
     </paper-input>
     </div>
   </template>
-
   <script>
-    /**
-     * `owc-eo-full-text-search`
-     * Full Text Search component
-     *
-     * @customElement
-     * @polymer
-     * @demo demo/index.html
-     */
     class OwcEoFullTextSearch extends Polymer.Element {
-      static get is() { return 'owc-eo-full-text-search'; }
+      static get is() {
+        return 'owc-eo-full-text-search';
+      }
       static get properties() {
         return {
-          prop1: {
-            type: String,
-            value: 'owc-eo-full-text-search'
-          },
-          res: {
-            type: String,
-            value: 'resDefaultValue'
-          },
           baseUrl: {
             type: String,
             value: 'default baseurl'
           },
-
           apiUrl: {
             type: String,
             value: 'default apiUrl'
-          }
+          },
+          model: {
+            type: Array,
+            value: []
+          },
         };
       }
 
+      //Configuration
       ready() {
         super.ready();
         var self = this;
-        self.baseUrl = 'https://scihub.copernicus.eu';
-        self.apiUrl = '/dhus/api/stub/products?filter=';
+        self.baseUrl = 'https://scihub.copernicus.eu/dhus';
+        self.apiUrl = '/api/stub/products?filter=';
       }
 
       search() {
         var self = this;
-        if (this._ctx.am.logged == false) {
-          this._ctx.wm.pushComponent(document.createElement('owc-ui-login-box'), "150px", "Login Title");
-        } else {//User Logged
-          var query = this.$.searchboxinput.value;
-          var method = "GET";
-          var subUrl = self.baseUrl + self.apiUrl + query + '&offset=0&limit=25&sortedby=ingestiondate&order=desc';
-          this._ctx.hm.sendRequest(method, subUrl).then(
-            function (result) { //OK
-              // console.log(result.data);
-              var jsonString = JSON.stringify(result.data);
-              // console.log(jsonString);
+        //If user is not logged push the login component
+        if (this._ctx.am.logged == false) this._ctx.wm.pushComponent(document.createElement('owc-ui-login-box'), "150px", "Login Title");
 
-              var list = document.createElement('owc-ui-list');
-              list.model = result.data; //jsonString //inject model
-              self._ctx.wm.pushComponent(list, "150px", "List Title");
+        else {//User Logged
+          var query = this.$.searchboxinput.value;
+          if (query == "") query = "*"; //Perform full search if field is empty
+          var options = '&offset=0&limit=25&sortedby=ingestiondate&order=desc'
+          
+          var requestUrl = self.baseUrl + self.apiUrl + query + options;
+          this._ctx.hm.sendRequest("GET", requestUrl).then(
+            function (result) { //OK: Inject useful information into model for each product
+              result.data.products.forEach(function (element, index) {
+                self.model[index] = new itemModel(element.identifier, element.thumbnail, element.uuid, self.baseUrl, element.summary);
+              });
+
+              var owcUiList = document.createElement('owc-ui-list');
+              owcUiList.model = self.model; //model injection
+              self._ctx.wm.pushComponent(owcUiList, "150px", "List Title");
               return result;
             },
-            function (err) { //ERROR
-              console.log('ERROR');
-              return err;
-            });
+            function (err) { return err; }
+          );
         }
       }
 
       clear() {
         this.$.searchboxinput.value = "";
+      }
+    }
+
+    //Model used by owc-ui-row-item.html
+    class itemModel {
+      constructor(title, thumb, thumbUrl, url, attributes) {
+        this.title = title;
+        this.thumb = thumb;
+        this.thumbUrl = thumbUrl;
+        this.url = url; //used for baseUrl
+        this.attributes = attributes;
       }
     }
 
