@@ -1,43 +1,28 @@
 <link rel="import" href="../polymer/polymer-element.html">
-<link rel="import" href="../paper-input/paper-input.html">
-<link rel="import" href="../iron-icons/iron-icons.html">
-<link rel="import" href="../owc-ui-list/owc-ui-list.html">
+<link rel="import" href="../paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../paper-input/all-imports.html">
 
 <dom-module id="owc-eo-full-text-search">
   <template>
-    <style is="custom-style">
-      :host {
-        display: block;
-      }
-
-      #searchboxinput {
-        display: block;
-        min-height: 40px;
-        width: 98%;
-        margin-bottom: 5px;
-        align-self: center;
-        font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        font-size: 14px;
-        resize: vertical;
-        overflow-y: auto;
-      }
+    <style>
+      #noProducts {
+				font-weight: bold;
+				color: #c0392b;
+			}
 
       paper-icon-button {
-        color: #002664;
-        font-weight: bold;
-      }
-
-      paper-icon-button[toggles][active][raised].colorful {
-        color: rgba(66, 133, 244, 0.75);
+        color: #273c75 /*002664*/
       }
     </style>
-    <div id="search-container"></div>
-    <paper-input label="Insert search criteria..." id="searchboxinput">
-      <paper-icon-button style="width: 33px;" slot="suffix" on-click="clear" icon="clear" alt="clear" title="clear"></paper-icon-button>
-      <paper-icon-button style="width: 33px;" slot="suffix" on-click="search" icon="search" alt="search" title="search"></paper-icon-button>
+
+    <paper-input id="searchboxinput" label="Insert search criteria" on-keydown="onKeyDown">
+      <paper-icon-button style="width: 35px;" slot="suffix" on-click="clear" icon="clear" alt="clear" title="clear"></paper-icon-button>
+      <paper-icon-button style="width: 35px;" slot="suffix" on-click="search" icon="search" alt="search" title="search"></paper-icon-button>
     </paper-input>
-    </div>
+    <div id="noProducts" hidden$="{{!isEmptySearch}}">No products found</div>
   </template>
+  <!-- import extrnal js class file -->
+  <script type="text/javascript" src="itemModel.js"></script>
   <script>
     class OwcEoFullTextSearch extends Polymer.Element {
       static get is() {
@@ -47,7 +32,7 @@
         return {
           baseUrl: {
             type: String,
-            value: 'default baseurl'
+            value: 'default apiUrl'
           },
           apiUrl: {
             type: String,
@@ -57,57 +42,77 @@
             type: Array,
             value: []
           },
+          isEmptySearch: {
+            type: Boolean,
+            value: false
+          },
         };
       }
 
-      //Configuration
+      //Component Configuration
       ready() {
         super.ready();
         var self = this;
-        self.baseUrl = 'https://scihub.copernicus.eu/dhus';
         self.apiUrl = '/api/stub/products?filter=';
+
+        //CONTEXT ASSIGNMENT
+        self._ctx = ApplicationContext.getInstance().context;
+        self.baseUrl = self._ctx.bu; //Get baseUrl information from starter kit component
       }
 
       search() {
         var self = this;
-        //If user is not logged push the login component
-        if (this._ctx.am.logged == false) this._ctx.wm.pushComponent(document.createElement('owc-ui-login-box'), "150px", "Login Title");
 
-        else {//User Logged
-          var query = this.$.searchboxinput.value;
-          if (query == "") query = "*"; //Perform full search if field is empty
-          var options = '&offset=0&limit=25&sortedby=ingestiondate&order=desc'
-          
-          var requestUrl = self.baseUrl + self.apiUrl + query + options;
-          this._ctx.hm.sendRequest("GET", requestUrl).then(
-            function (result) { //OK: Inject useful information into model for each product
-              result.data.products.forEach(function (element, index) {
-                self.model[index] = new itemModel(element.identifier, element.thumbnail, element.uuid, self.baseUrl, element.summary);
-              });
-
-              var owcUiList = document.createElement('owc-ui-list');
-              owcUiList.model = self.model; //model injection
-              self._ctx.wm.pushComponent(owcUiList, "150px", "List Title");
-              return result;
-            },
-            function (err) { return err; }
-          );
+        //If user is not logged push the login component end return
+        if (self._ctx.am.logged == false) {
+          self._ctx.wm.pushComponent(document.createElement('owc-ui-login-box'), "150px", "Login Title");
+          return;
         }
+
+        //User Logged
+        var query = self.$.searchboxinput.value;
+        if (query == "") query = "*" //Perform full search if field is empty
+        var options = '&offset=0&limit=25&sortedby=ingestiondate&order=desc'
+
+        //Create request
+        var requestUrl = self.baseUrl + self.apiUrl + query + options;
+
+        //Perform request
+        self._ctx.hm.sendRequest("GET", requestUrl).then(
+          function (result) { //OK: 
+            self.model = [] //Clear current model
+
+            if (result.data.products.length <= 0) //No Products founded
+              self.isEmptySearch = true;
+
+            else
+              result.data.products.forEach(function (e, index) {//Inject useful info in current model
+                self.model[index] = new ItemModel(e.identifier, e.thumbnail, e.uuid, self.baseUrl, e.summary);
+              })
+
+            self._ctx.resource = self.model; //Set Datasource model 
+            self._ctx.mb.publish("search"); //Publish search completed on message broker to update the list
+            return result;
+          },
+          function (err) { return err; }
+        );
       }
 
       clear() {
-        this.$.searchboxinput.value = "";
+        var self = this;
+        self.$.searchboxinput.value = "";
       }
-    }
 
-    //Model used by owc-ui-row-item.html
-    class itemModel {
-      constructor(title, thumb, thumbUrl, url, attributes) {
-        this.title = title;
-        this.thumb = thumb;
-        this.thumbUrl = thumbUrl;
-        this.url = url; //used for baseUrl
-        this.attributes = attributes;
+      onKeyDown(keyDown) {
+        var self = this;
+        switch (keyDown.keyCode) {
+          case 13:
+            self.search();
+            break;
+          default:
+            self.isEmptySearch = false
+            break;
+        }
       }
     }
 
