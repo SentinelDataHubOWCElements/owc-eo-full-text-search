@@ -2,27 +2,142 @@
 <link rel="import" href="../paper-icon-button/paper-icon-button.html">
 <link rel="import" href="../paper-input/all-imports.html">
 
+<!-- Performs a search using DataSource component (Available on the context) -->
 <dom-module id="owc-eo-full-text-search">
+
   <template>
     <style>
       #noProducts {
-				font-weight: bold;
-				color: #c0392b;
-			}
+        font-weight: bold;
+        color: #c0392b;
+      }
 
       paper-icon-button {
-        color: #273c75 /*002664*/
+        width: 35px;
+        color: #273c75
+          /*002664*/
+      }
+
+      span.msg,
+      span.choose {
+        color: #555;
+        padding: 5px 0 10px;
+        display: inherit
+      }
+
+      .container {
+        float: right;
+        right: 20px;
+        width: 50px;
+        margin: 0px auto 0;
+        text-align: center
+      }
+
+      /*Styling Selectbox*/
+
+      .dropdown {
+        display: inline-block;
+        width: 50px;
+        background-color: #fff;
+        border-radius: 5px;
+        box-shadow: 0 0 2px rgb(204, 204, 204);
+        transition: all .5s ease;
+        position: relative;
+        font-size: 14px;
+        color: #474747;
+        height: 100%;
+        text-align: left
+      }
+
+      .dropdown .select {
+        cursor: pointer;
+        display: block;
+        padding: 10px
+      }
+
+      .dropdown .select>i {
+        font-size: 13px;
+        color: #888;
+        cursor: pointer;
+        transition: all .3s ease-in-out;
+        float: right;
+        line-height: 20px
+      }
+
+      .dropdown:hover {
+        box-shadow: 0 0 4px rgb(204, 204, 204)
+      }
+
+      .dropdown:active {
+        background-color: #f8f8f8
+      }
+
+      .dropdown.active:hover,
+      .dropdown.active {
+        box-shadow: 0 0 4px rgb(204, 204, 204);
+        border-radius: 5px 5px 0 0;
+        background-color: #f8f8f8
+      }
+
+      .dropdown.active .select>i {
+        transform: rotate(-90deg)
+      }
+
+      .dropdown .dropdown-menu {
+        position: absolute;
+        background-color: #fff;
+        height: 10px;
+        width: 50px;
+        left: 0;
+        margin-top: 1px;
+        box-shadow: 0 1px 2px rgb(204, 204, 204);
+        border-radius: 0 1px 5px 5px;
+        overflow: hidden;
+        display: none;
+        max-height: 144px;
+        overflow-y: auto;
+        z-index: 9
+      }
+
+      .dropdown .dropdown-menu li {
+        padding: 10px;
+        transition: all .2s ease-in-out;
+        cursor: pointer
+      }
+
+      .dropdown .dropdown-menu {
+        padding: 0;
+        list-style: none
+      }
+
+      .dropdown .dropdown-menu li:hover {
+        background-color: #f2f2f2
+      }
+
+      .dropdown .dropdown-menu li:active {
+        background-color: #e2e2e2
       }
     </style>
 
+    <!-- body -->
     <paper-input id="searchboxinput" label="Insert search criteria" on-keydown="onKeyDown">
-      <paper-icon-button style="width: 35px;" slot="suffix" on-click="clear" icon="clear" alt="clear" title="clear"></paper-icon-button>
-      <paper-icon-button style="width: 35px;" slot="suffix" on-click="search" icon="search" alt="search" title="search"></paper-icon-button>
+      <paper-icon-button slot="suffix" on-click="btnClear" icon="clear"></paper-icon-button>
+      <paper-icon-button slot="suffix" on-click="btnSearch" icon="search"></paper-icon-button>
     </paper-input>
-    <div id="noProducts" hidden$="{{!isEmptySearch}}">No products found</div>
+    <div>
+      <span id="noProducts" hidden$="{{!isEmptySearch}}">No products found</span>
+      <span class="container">
+        <select id="searchLimit" class="dropdown">
+          <option class="select" value=5>5</option>
+          <option class="select" value=10>10</option>
+          <option class="select" value=12>12</option>
+        </select>
+      </span>
+    </div>
+    <br>
+    <br>
   </template>
-  <!-- import extrnal js class file -->
-  <script type="text/javascript" src="itemModel.js"></script>
+
   <script>
     class OwcEoFullTextSearch extends Polymer.Element {
       static get is() {
@@ -30,14 +145,6 @@
       }
       static get properties() {
         return {
-          baseUrl: {
-            type: String,
-            value: 'default apiUrl'
-          },
-          apiUrl: {
-            type: String,
-            value: 'default apiUrl'
-          },
           model: {
             type: Array,
             value: []
@@ -49,69 +156,52 @@
         };
       }
 
-      //Component Configuration
       ready() {
         super.ready();
         var self = this;
-        self.apiUrl = '/api/stub/products?filter=';
-
-        //CONTEXT ASSIGNMENT
-        self._ctx = ApplicationContext.getInstance().context;
-        self.baseUrl = self._ctx.bu; //Get baseUrl information from starter kit component
+        self._ctx = ApplicationContext.getInstance().context; //Context Assignment
+        self._ctx.es = self;
       }
 
-      search() {
+      //BUTTON CONTROLLERS
+
+      // @Controller
+      btnSearch() {
         var self = this;
-
-        //If user is not logged push the login component end return
-        if (self._ctx.am.logged == false) {
-          self._ctx.wm.pushComponent(document.createElement('owc-ui-login-box'), "150px", "Login Title");
-          return;
-        }
-
-        //User Logged
-        var query = self.$.searchboxinput.value;
-        if (query == "") query = "*" //Perform full search if field is empty
-        var options = '&offset=0&limit=25&sortedby=ingestiondate&order=desc'
-
-        //Create request
-        var requestUrl = self.baseUrl + self.apiUrl + query + options;
-
-        //Perform request
-        self._ctx.hm.sendRequest("GET", requestUrl).then(
-          function (result) { //OK: 
-            self.model = [] //Clear current model
-
-            if (result.data.products.length <= 0) //No Products founded
-              self.isEmptySearch = true;
-
-            else
-              result.data.products.forEach(function (e, index) {//Inject useful info in current model
-                self.model[index] = new ItemModel(e.identifier, e.thumbnail, e.uuid, self.baseUrl, e.summary);
-              })
-
-            self._ctx.resource = self.model; //Set Datasource model 
-            self._ctx.mb.publish("search"); //Publish search completed on message broker to update the list
-            return result;
-          },
-          function (err) { return err; }
-        );
+        self.loadFirstPage();
       }
 
+      // @Controller
+      btnClear() {
+        var self = this;
+        self.clear();
+      }
+
+      /*
+      * Set Parameters From Current UI and call Datasurce search
+      */
+      // @Service
+      loadFirstPage() {
+        var self = this;
+        console.log('user is logged ', self._ctx.am.logged);
+        var filter = self.$.searchboxinput.value; //search box input
+        var limit = self.$.searchLimit.value; //limit set by dropdown menu
+        self._ctx.ds.loadFirstPage(filter, limit); //call Datasurce search
+      }
+
+      // @Service
       clear() {
         var self = this;
         self.$.searchboxinput.value = "";
       }
 
+      //Reset EmptySearch div on every
       onKeyDown(keyDown) {
         var self = this;
-        switch (keyDown.keyCode) {
-          case 13:
-            self.search();
-            break;
-          default:
-            self.isEmptySearch = false
-            break;
+        if (keyDown.keyCode === 13) {
+          self.loadFirstPage();
+        } else {
+          self.isEmptySearch = false
         }
       }
     }
