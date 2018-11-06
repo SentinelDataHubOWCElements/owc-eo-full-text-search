@@ -1,33 +1,208 @@
 <link rel="import" href="../polymer/polymer-element.html">
+<link rel="import" href="../paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../paper-input/all-imports.html">
 
+<!-- Performs a search using DataSource component (Available on the context) -->
 <dom-module id="owc-eo-full-text-search">
+
   <template>
     <style>
-      :host {
+      #noProducts {
+        font-weight: bold;
+        color: #c0392b;
+      }
+
+      paper-icon-button {
+        width: 35px;
+        color: #273c75
+          /*002664*/
+      }
+
+      span.msg,
+      span.choose {
+        color: #555;
+        padding: 5px 0 10px;
+        display: inherit
+      }
+
+      .container {
+        float: right;
+        right: 20px;
+        width: 50px;
+        margin: 0px auto 0;
+        text-align: center
+      }
+
+      /*Styling Selectbox*/
+
+      .dropdown {
+        display: inline-block;
+        width: 50px;
+        background-color: #fff;
+        border-radius: 5px;
+        box-shadow: 0 0 2px rgb(204, 204, 204);
+        transition: all .5s ease;
+        position: relative;
+        font-size: 14px;
+        color: #474747;
+        height: 100%;
+        text-align: left
+      }
+
+      .dropdown .select {
+        cursor: pointer;
         display: block;
+        padding: 10px
+      }
+
+      .dropdown .select>i {
+        font-size: 13px;
+        color: #888;
+        cursor: pointer;
+        transition: all .3s ease-in-out;
+        float: right;
+        line-height: 20px
+      }
+
+      .dropdown:hover {
+        box-shadow: 0 0 4px rgb(204, 204, 204)
+      }
+
+      .dropdown:active {
+        background-color: #f8f8f8
+      }
+
+      .dropdown.active:hover,
+      .dropdown.active {
+        box-shadow: 0 0 4px rgb(204, 204, 204);
+        border-radius: 5px 5px 0 0;
+        background-color: #f8f8f8
+      }
+
+      .dropdown.active .select>i {
+        transform: rotate(-90deg)
+      }
+
+      .dropdown .dropdown-menu {
+        position: absolute;
+        background-color: #fff;
+        height: 10px;
+        width: 50px;
+        left: 0;
+        margin-top: 1px;
+        box-shadow: 0 1px 2px rgb(204, 204, 204);
+        border-radius: 0 1px 5px 5px;
+        overflow: hidden;
+        display: none;
+        max-height: 144px;
+        overflow-y: auto;
+        z-index: 9
+      }
+
+      .dropdown .dropdown-menu li {
+        padding: 10px;
+        transition: all .2s ease-in-out;
+        cursor: pointer
+      }
+
+      .dropdown .dropdown-menu {
+        padding: 0;
+        list-style: none
+      }
+
+      .dropdown .dropdown-menu li:hover {
+        background-color: #f2f2f2
+      }
+
+      .dropdown .dropdown-menu li:active {
+        background-color: #e2e2e2
       }
     </style>
-    <h2>Hello [[prop1]]!</h2>
+
+    <!-- body -->
+    <paper-input id="searchboxinput" label="Insert search criteria" on-keydown="onKeyDown">
+      <paper-icon-button slot="suffix" on-click="btnClear" icon="clear"></paper-icon-button>
+      <paper-icon-button slot="suffix" on-click="btnSearch" icon="search"></paper-icon-button>
+    </paper-input>
+    <div>
+      <span id="noProducts" hidden$="{{!isEmptySearch}}">No products found</span>
+      <span class="container">
+        <select id="searchLimit" class="dropdown">
+          <option class="select" value=5>5</option>
+          <option class="select" value=10>10</option>
+          <option class="select" value=12>12</option>
+        </select>
+      </span>
+    </div>
+    <br>
+    <br>
   </template>
 
   <script>
-    /**
-     * `owc-eo-full-text-search`
-     * Full Text Search component
-     *
-     * @customElement
-     * @polymer
-     * @demo demo/index.html
-     */
     class OwcEoFullTextSearch extends Polymer.Element {
-      static get is() { return 'owc-eo-full-text-search'; }
+      static get is() {
+        return 'owc-eo-full-text-search';
+      }
       static get properties() {
         return {
-          prop1: {
-            type: String,
-            value: 'owc-eo-full-text-search'
-          }
+          model: {
+            type: Array,
+            value: []
+          },
+          isEmptySearch: {
+            type: Boolean,
+            value: false
+          },
         };
+      }
+
+      ready() {
+        super.ready();
+        var self = this;
+        self._ctx = ApplicationContext.getInstance().context; //Context Assignment
+        self._ctx.es = self;
+      }
+
+      //BUTTON CONTROLLERS
+
+      // @Controller
+      btnSearch() {
+        var self = this;
+        self.loadFirstPage();
+      }
+
+      // @Controller
+      btnClear() {
+        var self = this;
+        self.clear();
+      }
+
+      /*
+      * Set Parameters From Current UI and call Datasurce search
+      */
+      // @Service
+      loadFirstPage() {
+        var self = this;
+        console.log('user is logged ', self._ctx.am.logged);
+        var filter = self.$.searchboxinput.value; //search box input
+        var limit = self.$.searchLimit.value; //limit set by dropdown menu
+        self._ctx.ds.loadFirstPage(filter, limit); //call Datasurce search
+      }
+
+      // @Service
+      clear() {
+        var self = this;
+        self.$.searchboxinput.value = "";
+      }
+
+      //Reset EmptySearch div on every
+      onKeyDown(keyDown) {
+        var self = this;
+        if (keyDown.keyCode === 13) {
+          self.loadFirstPage();
+        } else {
+          self.isEmptySearch = false
+        }
       }
     }
 
